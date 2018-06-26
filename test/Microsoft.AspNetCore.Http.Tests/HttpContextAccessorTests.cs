@@ -76,6 +76,7 @@ namespace Microsoft.AspNetCore.Http
 
             // Null out the accessor
             accessor.HttpContext = null;
+            context.TraceIdentifier = null;
 
             waitForNullTcs.SetResult(null);
 
@@ -120,8 +121,8 @@ namespace Microsoft.AspNetCore.Http
 
             await checkAsyncFlowTcs.Task;
 
-            // Null out the accessor
-            accessor.HttpContext = null;
+            // Reset the trace identifier on the first request
+            context.TraceIdentifier = null;
 
             // Set a new http context
             var context2 = new DefaultHttpContext();
@@ -133,6 +134,64 @@ namespace Microsoft.AspNetCore.Http
             Assert.Same(context2, accessor.HttpContext);
 
             await afterNullCheckTcs.Task;
+        }
+
+        [Fact]
+        public async Task HttpContextAccessor_GettingHttpContextDoesNotFlowIfAccessorSetToNull()
+        {
+            var accessor = new HttpContextAccessor();
+
+            var context = new DefaultHttpContext();
+            context.TraceIdentifier = "1";
+            accessor.HttpContext = context;
+
+            var checkAsyncFlowTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            accessor.HttpContext = null;
+
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    // The HttpContext flows with the execution context
+                    Assert.Null(accessor.HttpContext);
+                    checkAsyncFlowTcs.SetResult(null);
+                }
+                catch (Exception ex)
+                {
+                    checkAsyncFlowTcs.SetException(ex);
+                }
+            });
+
+            await checkAsyncFlowTcs.Task;
+        }
+
+        [Fact]
+        public async Task HttpContextAccessor_GettingHttpContextDoesNotFlowIfExecutionContextDoesNotFlow()
+        {
+            var accessor = new HttpContextAccessor();
+
+            var context = new DefaultHttpContext();
+            context.TraceIdentifier = "1";
+            accessor.HttpContext = context;
+
+            var checkAsyncFlowTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            ThreadPool.UnsafeQueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    // The HttpContext flows with the execution context
+                    Assert.Null(accessor.HttpContext);
+                    checkAsyncFlowTcs.SetResult(null);
+                }
+                catch (Exception ex)
+                {
+                    checkAsyncFlowTcs.SetException(ex);
+                }
+            }, null);
+
+            await checkAsyncFlowTcs.Task;
         }
     }
 }

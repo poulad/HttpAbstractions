@@ -19,20 +19,7 @@ namespace Microsoft.AspNetCore.Http
             }
             set
             {
-                var existing = _httpContextCurrent.Value;
-
-                if (value != null)
-                {
-                    // Store the request id and the HttpContext
-                    _httpContextCurrent.Value = (value.TraceIdentifier, value);
-                }
-                else
-                {
-                    // Setting the context to null means the request is over
-                    existing.context.TraceIdentifier = null;
-                    existing.context = null;
-                    existing.traceIdentifier = null;
-                }
+                _httpContextCurrent.Value = (value?.TraceIdentifier, value);
             }
         }
     }
