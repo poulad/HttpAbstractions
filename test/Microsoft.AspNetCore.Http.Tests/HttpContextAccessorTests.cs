@@ -86,7 +86,7 @@ namespace Microsoft.AspNetCore.Http
         }
 
         [Fact]
-        public async Task HttpContextAccessor_GettingHttpContextReturnsNullHttpContextIsDifferentTraceIdentifier()
+        public async Task HttpContextAccessor_GettingHttpContextReturnsNullHttpContextIfDifferentTraceIdentifier()
         {
             var accessor = new HttpContextAccessor();
 

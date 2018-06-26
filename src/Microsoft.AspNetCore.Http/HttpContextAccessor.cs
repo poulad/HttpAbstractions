@@ -15,6 +15,7 @@ namespace Microsoft.AspNetCore.Http
             {
                 var value = _httpContextCurrent.Value;
                 // Only return the context if the stored request id matches the stored trace identifier
+                // context.TraceIdentifier is cleared by HttpContextFactory.Dispose.
                 return value.traceIdentifier == value.context?.TraceIdentifier ? value.context : null;
             }
             set
