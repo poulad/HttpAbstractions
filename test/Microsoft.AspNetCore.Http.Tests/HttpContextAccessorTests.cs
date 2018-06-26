@@ -31,6 +31,14 @@ namespace Microsoft.AspNetCore.Http
         }
 
         [Fact]
+        public void HttpContextAccessor_GettingHttpContextWithOutSettingReturnsNull()
+        {
+            var accessor = new HttpContextAccessor();
+
+            Assert.Null(accessor.HttpContext);
+        }
+
+        [Fact]
         public async Task HttpContextAccessor_GettingHttpContextReturnsNullHttpContextIfSetToNull()
         {
             var accessor = new HttpContextAccessor();
@@ -72,6 +80,57 @@ namespace Microsoft.AspNetCore.Http
             waitForNullTcs.SetResult(null);
 
             Assert.Null(accessor.HttpContext);
+
+            await afterNullCheckTcs.Task;
+        }
+
+        [Fact]
+        public async Task HttpContextAccessor_GettingHttpContextReturnsNullHttpContextIsDifferentTraceIdentifier()
+        {
+            var accessor = new HttpContextAccessor();
+
+            var context = new DefaultHttpContext();
+            context.TraceIdentifier = "1";
+            accessor.HttpContext = context;
+
+            var checkAsyncFlowTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var waitForNullTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var afterNullCheckTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            ThreadPool.QueueUserWorkItem(async _ =>
+            {
+                // The HttpContext flows with the execution context
+                Assert.Same(context, accessor.HttpContext);
+
+                checkAsyncFlowTcs.SetResult(null);
+
+                await waitForNullTcs.Task;
+
+                try
+                {
+                    Assert.Null(accessor.HttpContext);
+
+                    afterNullCheckTcs.SetResult(null);
+                }
+                catch (Exception ex)
+                {
+                    afterNullCheckTcs.SetException(ex);
+                }
+            });
+
+            await checkAsyncFlowTcs.Task;
+
+            // Null out the accessor
+            accessor.HttpContext = null;
+
+            // Set a new http context
+            var context2 = new DefaultHttpContext();
+            context2.TraceIdentifier = "2";
+            accessor.HttpContext = context2;
+
+            waitForNullTcs.SetResult(null);
+
+            Assert.Same(context2, accessor.HttpContext);
 
             await afterNullCheckTcs.Task;
         }
