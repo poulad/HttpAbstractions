@@ -150,6 +150,17 @@ namespace Microsoft.AspNetCore.WebUtilities
             }
         }
 
+#if NETCOREAPP2_2
+        // Writes pre-encoded text as bytes to the output. Caller is responsible for encoding.
+        public void WriteEncoded(ReadOnlyMemory<byte> bytes)
+        {
+            // Flush the char buffer, since we're going to write bytes directly.
+            FlushInternal(flushEncoder: true);
+
+            _stream.Write(bytes.Span);
+        }
+#endif
+
         public override async Task WriteAsync(char value)
         {
             if (_disposed)
@@ -213,6 +224,17 @@ namespace Microsoft.AspNetCore.WebUtilities
                 CopyToCharBuffer(value, ref index, ref count);
             }
         }
+
+#if NETCOREAPP2_2
+        // Writes pre-encoded text as bytes to the output. Caller is responsible for encoding.
+        public async Task WriteEncodedAsync(ReadOnlyMemory<byte> bytes)
+        {
+            // Flush the char buffer, since we're going to write bytes directly.
+            await FlushInternalAsync(flushEncoder: true);
+
+            await _stream.WriteAsync(bytes);
+        }
+#endif
 
         // We want to flush the stream when Flush/FlushAsync is explicitly
         // called by the user (example: from a Razor view).
